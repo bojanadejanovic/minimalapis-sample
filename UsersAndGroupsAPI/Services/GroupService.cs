@@ -22,7 +22,12 @@ namespace UsersAndGroupsAPI.Services
 
         public async Task<List<Group>> GetAllGroups()
         {
-            return await _dbContext.Group.ToListAsync();
+            //return await _dbContext.Group.ToListAsync();
+            var groups = new List<Group>();
+            groups.Add(new Group() { Id = 1, Name = "Group Test 1" });
+            groups.Add(new Group() { Id = 2, Name = "Group Test 2" });
+            groups.Add(new Group() { Id = 3, Name = "Group Test 3" });
+            return groups;
         }
 
         public async Task<Group?> GetGroupById(int id)
