@@ -1,6 +1,5 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using UsersAndGroupsAPI.Db;
 using UsersAndGroupsAPI.Interfaces;
 using UsersAndGroupsAPI.Models;
@@ -15,7 +14,6 @@ builder.Services.AddSqlite<UsersAndGroupsContext>(connectionString);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 // Add services to the container.
 builder.Services.AddScoped<IValidator<CreateUserRequest>, CreateUserValidator>();
@@ -41,33 +39,42 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.MapGet("/groups", async (IGroupService groupService) =>
-    await groupService.GetAllGroups());
+app.MapGet("/groups",  async (IGroupService groupService) =>
+    await groupService.GetAllGroups()).WithName("GetAllGroups")
+    .WithOpenApi(operation => new(operation)
+    {
+        OperationId = "GetAllGroups",
+        Description = "Get all available groups"
+    });
 
-
-app.MapGet("/groups/{id}", async (int id, IGroupService groupService) =>
-       await groupService.GetGroupById(id)
+app.MapGet("/groups/{id}", [EndpointDescription("Get group by groupId")] async (int id, IGroupService groupService) =>
+    await groupService.GetGroupById(id)
         is Group group
-            ? Results.Ok(group)
-            : Results.NotFound());
+        ? Results.Ok(group)
+        : Results.NotFound()).WithOpenApi(generatedOperation =>
+{
+    var parameter = generatedOperation.Parameters[0];
+    parameter.Description = "The id of the group";
+    return generatedOperation;
+});
 
-app.MapPost("/groups", async ([FromBody] CreateGroupRequest req, IGroupService groupService) =>
+app.MapPost("/groups",  [EndpointDescription("Create new group")] async ([FromBody] CreateGroupRequest req, IGroupService groupService) =>
 {
     var newGroup = await groupService.CreateNewGroup(req);
 
     return Results.Created($"/groups/{newGroup?.Id}", newGroup);
 });
 
-app.MapGet("/users", async (IUserService userService) =>
+app.MapGet("/users", [EndpointDescription("Get all available users")]async (IUserService userService) =>
     await userService.GetUsers());
 
-app.MapGet("/users/{id}", async (int id, IUserService userService) =>
+app.MapGet("/users/{id}", [EndpointDescription("Get user by id")] async (int id, IUserService userService) =>
     await userService.GetUser(id)
         is UserModel user
             ? Results.Ok(user)
             : Results.NotFound());
 
-app.MapPost("/users", async (Validated<CreateUserRequest> req, IUserService userService, IGroupService groupService) =>
+app.MapPost("/users", [EndpointDescription("Create new user")]async (Validated<CreateUserRequest> req, IUserService userService, IGroupService groupService) =>
 {
     // deconstruct to bool & CreateUserRequest
     if (req.IsValid)
@@ -95,7 +102,7 @@ app.MapPost("/users", async (Validated<CreateUserRequest> req, IUserService user
 
 });
 
-app.MapPost("/users/addusertogroup", async ([FromBody] AddUserToGroupRequest req, IUserService userService) =>
+app.MapPost("/users/addusertogroup", [EndpointDescription("Add user to group, based on userId and groupId")]async ([FromBody] AddUserToGroupRequest req, IUserService userService) =>
 {   
    var userToGroup = await userService.AddUserToGroup(req.UserId, req.GroupId);
    var user = await userService.GetUser(req.UserId);
@@ -107,7 +114,7 @@ app.MapPost("/users/addusertogroup", async ([FromBody] AddUserToGroupRequest req
     }
     else
     {
-        return Results.BadRequest($"User with id {req.UserId} already belongs to group  {user.Group}");
+        return Results.BadRequest($"User with id {req.UserId} already belongs to group  {user?.Group}");
     }
 });
 

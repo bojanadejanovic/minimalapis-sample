@@ -365,3 +365,6 @@ FodyWeavers.xsd
 # db files
 *.db
 *.db-*
+
+# jetbrains rider
+*.idea
